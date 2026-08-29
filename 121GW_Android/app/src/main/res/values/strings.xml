@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">121GW</string>
+    <string name="ble_usage">Needed to connect to your EEVblog 121GW multimeter and stream measurement data.</string>
+</resources>
