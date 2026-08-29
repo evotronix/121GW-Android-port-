@@ -1,4 +1,4 @@
-# 121GW-Android-port-
+# 121GW-Android-port made with Grok AI
 
 Native Android port of the iOS 121GW companion app (v1.4.22).  
 Functions, packet decoding, logging behaviour, and interface layout match the iOS application.
