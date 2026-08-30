@@ -3,6 +3,12 @@
 Native Android port of the iOS 121GW companion app (v1.4.22).  
 Functions, packet decoding, logging behaviour, and interface layout match the iOS application.
 
+<img width="720" height="1600" alt="005" src="https://github.com/user-attachments/assets/1c08c97f-411a-40eb-b599-26b660d66868" /><img width="720" height="1600" alt="002" src="https://github.com/user-attachments/assets/9e48019d-f477-4867-8db2-bf24d2a78c9c" />
+
+
+
+
+
 ## Open in Android Studio
 
 1. Open this folder as a Gradle project.
