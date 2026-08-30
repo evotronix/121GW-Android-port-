@@ -3,10 +3,11 @@
 Native Android port of the iOS 121GW companion app (v1.4.22).  
 Functions, packet decoding, logging behaviour, and interface layout match the iOS application.
 
-<img width="720" height="1600" alt="005" src="https://github.com/user-attachments/assets/1c08c97f-411a-40eb-b599-26b660d66868" /><img width="720" height="1600" alt="002" src="https://github.com/user-attachments/assets/9e48019d-f477-4867-8db2-bf24d2a78c9c" />
-
-
-
+<img width="720" height="1600" alt="005" src="https://github.com/user-attachments/assets/1c08c97f-411a-40eb-b599-26b660d66868" />
+<img width="720" height="1600" alt="002" src="https://github.com/user-attachments/assets/9e48019d-f477-4867-8db2-bf24d2a78c9c" />
+<img width="720" height="1600" alt="003" src="https://github.com/user-attachments/assets/0748c8db-3f23-47fb-bb9b-9c9a18b83941" />
+<img width="720" height="1600" alt="004" src="https://github.com/user-attachments/assets/fb8a2455-c847-4c81-9f13-2053e6e88faf" />
+<img width="720" height="1600" alt="001" src="https://github.com/user-attachments/assets/a737102d-e6ac-4944-894d-5985e3389c96" />
 
 
 ## Open in Android Studio
