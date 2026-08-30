@@ -259,27 +259,105 @@ class BleManager(private val context: Context) {
     }
 
     fun startScan() {
-        if (isConnected.value) return
-
-        val a = adapter
-
-        if (a == null || !a.isEnabled) {
-            statusText.value = "Bluetooth not ready"
+        if (isConnected.value) {
+            Log.d(
+                TAG,
+                "startScan ignored: already connected"
+            )
             return
         }
 
-        isScanning.value = true
-        statusText.value = "Scanning for 121GW…"
+        val a = adapter
 
-        scanner?.startScan(
-            null,
-            ScanSettings.Builder()
-                .setScanMode(
-                    ScanSettings.SCAN_MODE_LOW_LATENCY
-                )
-                .build(),
-            scanCb
+        if (a == null) {
+            statusText.value =
+                "Bluetooth adapter unavailable"
+
+            Log.e(
+                TAG,
+                "Bluetooth adapter is null"
+            )
+
+            return
+        }
+
+        if (!a.isEnabled) {
+            statusText.value =
+                "Bluetooth is disabled"
+
+            Log.e(
+                TAG,
+                "Bluetooth is disabled"
+            )
+
+            return
+        }
+
+        val bleScanner =
+            scanner
+
+        if (bleScanner == null) {
+            statusText.value =
+                "BLE scanner unavailable"
+
+            Log.e(
+                TAG,
+                "BluetoothLeScanner is null"
+            )
+
+            return
+        }
+
+        discovered.value =
+            emptyList()
+
+        isScanning.value =
+            true
+
+        statusText.value =
+            "Scanning for BLE devices…"
+
+        Log.d(
+            TAG,
+            "Starting unrestricted BLE scan"
         )
+
+        try {
+            bleScanner.startScan(
+                null,
+                ScanSettings.Builder()
+                    .setScanMode(
+                        ScanSettings.SCAN_MODE_LOW_LATENCY
+                    )
+                    .setReportDelay(0)
+                    .build(),
+                scanCb
+            )
+        } catch (e: SecurityException) {
+            isScanning.value =
+                false
+
+            statusText.value =
+                "Bluetooth permission denied"
+
+            Log.e(
+                TAG,
+                "BLE scan permission denied",
+                e
+            )
+        } catch (e: Exception) {
+            isScanning.value =
+                false
+
+            statusText.value =
+                "BLE scan failed"
+
+            Log.e(
+                TAG,
+                "BLE scan exception",
+                e
+            )
+        }
     }
 
     fun stopScan() {
@@ -489,23 +567,49 @@ class BleManager(private val context: Context) {
                 result: ScanResult
             ) {
                 val name =
-                    result.device.name
+                    try {
+                        result.device.name
+                    } catch (e: SecurityException) {
+                        null
+                    }
                         ?: result.scanRecord?.deviceName
                         ?: ""
 
-                if (
-                    !name.contains(
-                        "121GW",
-                        ignoreCase = true
-                    )
-                ) {
-                    return
-                }
+                val address =
+                    try {
+                        result.device.address
+                    } catch (e: SecurityException) {
+                        "unknown"
+                    }
+
+                val recordBytes =
+                    result.scanRecord?.bytes
+
+                Log.d(
+                    TAG,
+                    "SCAN device=$address " +
+                        "name='$name' " +
+                        "rssi=${result.rssi} " +
+                        "record=${recordBytes?.size ?: 0} bytes"
+                )
+
+                /*
+                 * Do not filter by advertised name.
+                 *
+                 * Some 121GW advertisements/firmware versions may
+                 * not expose "121GW" as the advertised device name.
+                 * The old implementation discarded those devices.
+                 */
+
+                val displayName =
+                    name.ifBlank {
+                        "BLE ${address.takeLast(5)}"
+                    }
 
                 val item =
                     DiscoveredMeter(
-                        result.device.address,
-                        name.ifBlank { "121GW" }
+                        address,
+                        displayName
                     )
 
                 if (
@@ -515,26 +619,58 @@ class BleManager(private val context: Context) {
                 ) {
                     discovered.value =
                         discovered.value + item
+
+                    Log.d(
+                        TAG,
+                        "DISCOVERED $address '$displayName'"
+                    )
                 }
 
                 rssi.value =
                     result.rssi
 
-                if (
-                    !autoReconnect.value ||
-                    isConnected.value ||
-                    connecting
-                ) {
-                    return
-                }
+                /*
+                 * Only automatically reconnect to the previously known
+                 * address or to a device that actually advertises
+                 * itself as 121GW. Never auto-connect to an arbitrary
+                 * nearby BLE peripheral.
+                 */
+                val looksLike121GW =
+                    name.contains(
+                        "121GW",
+                        ignoreCase = true
+                    )
 
                 if (
-                    lastAddress == null ||
-                    result.device.address == lastAddress ||
-                    discovered.value.size == 1
+                    autoReconnect.value &&
+                    !isConnected.value &&
+                    !connecting &&
+                    (
+                        result.device.address == lastAddress ||
+                            (
+                                lastAddress == null &&
+                                    looksLike121GW
+                            )
+                    )
                 ) {
                     connect(
                         result.device.address
+                    )
+                }
+            }
+
+            override fun onBatchScanResults(
+                results: MutableList<ScanResult>
+            ) {
+                Log.d(
+                    TAG,
+                    "onBatchScanResults count=${results.size}"
+                )
+
+                for (result in results) {
+                    onScanResult(
+                        ScanSettings.CALLBACK_TYPE_ALL_MATCHES,
+                        result
                     )
                 }
             }
@@ -550,7 +686,22 @@ class BleManager(private val context: Context) {
                 handler.post {
                     isScanning.value = false
                     statusText.value =
-                        "BLE scan failed: $errorCode"
+                        when (errorCode) {
+                            ScanCallback.SCAN_FAILED_ALREADY_STARTED ->
+                                "BLE scan already started"
+
+                            ScanCallback.SCAN_FAILED_APPLICATION_REGISTRATION_FAILED ->
+                                "BLE scanner registration failed"
+
+                            ScanCallback.SCAN_FAILED_INTERNAL_ERROR ->
+                                "BLE scanner internal error"
+
+                            ScanCallback.SCAN_FAILED_FEATURE_UNSUPPORTED ->
+                                "BLE scan unsupported"
+
+                            else ->
+                                "BLE scan failed: $errorCode"
+                        }
                 }
             }
         }
